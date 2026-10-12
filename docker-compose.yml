@@ -1,0 +1,57 @@
+services:
+  mysqldb:
+    image: mysql:8.0
+    container_name: mysqlcontainer
+    command: --default-authentication-plugin=mysql_native_password
+    restart: unless-stopped
+    volumes:
+      - ./dbinit/init.sql:/docker-entrypoint-initdb.d/0_init.sql
+      - $HOME/database:/var/lib/mysql
+    ports:
+      - 3360:3306
+    expose:
+      - 3306
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pletmein"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    environment:
+      MYSQL_DATABASE: patientsdb
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: letmein
+      MYSQL_ROOT_PASSWORD: letmein
+      SERVICE_TAGS: prod
+      SERVICE_NAME: mysqldb
+    networks:
+      - internalnet
+
+  nodeapp:
+    container_name: nodeappcontainer
+    build: .
+    image: nodeapp:v1
+    ports:
+      - 3000:3000
+    expose:
+      - 3000
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysqldb
+      DB_PORT: 3306
+      DB_USER: admin
+      DB_PASSWORD: letmein
+      DB_NAME: patientsdb
+      DB_CONNECTION_LIMIT: 10
+      SERVICE_TAGS: prod
+      SERVICE_NAME: nodeappservice
+      SERVER_PORT: 3000
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    networks:
+      - internalnet
+
+networks:
+  internalnet:
+    driver: bridge
