@@ -1,142 +1,164 @@
-# Patient REST API (Node.js + Express + MySQL)
+# Patient Management API
 
-A beginner-friendly REST API for managing patient records. It uses **Express** for HTTP routes, **MySQL** for storage, and **Docker Compose** to run the API and database together.
+REST API for patient records, built with Node.js, Express, and MySQL. The service exposes JSON endpoints for create, read, update, and delete operations, and can run locally or as a pair of Docker containers.
 
-GitHub: [phuchuydoan/ApiNodejsGenerating](https://github.com/phuchuydoan/ApiNodejsGenerating)
+**Repository:** [phuchuydoan/ApiNodejsGenerating](https://github.com/phuchuydoan/ApiNodejsGenerating)
 
----
-
-## What you can do
-
-| Method | URL | Description |
-|--------|-----|-------------|
-| `GET` | `/` | Health check |
-| `GET` | `/patients` | List patients |
-| `GET` | `/patients/:id` | Get one patient |
-| `POST` | `/patients` | Create a patient |
-| `PUT` | `/patients/:id` | Update a patient |
-| `DELETE` | `/patients/:id` | Delete a patient |
+[![Node.js](https://img.shields.io/badge/Node.js-22-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
 ---
 
-## Project structure
+## Features
 
-```text
-nodejsapi/
-├── src/
-│   ├── index.js                 # starts the Express server
-│   ├── route/patient.route.js   # URL routes
-│   ├── controller/controller.js # request handlers (CRUD)
-│   ├── query/patient.query.js   # SQL statements
-│   ├── config/mysql.config.js   # MySQL connection pool
-│   ├── domain/response.js       # JSON response shape
-│   └── util/logger.js           # logging
-├── dbinit/init.sql              # creates the patients table
-├── Dockerfile                   # builds the API image
-├── docker-compose.yml           # API + MySQL containers
-├── .env.example                 # copy this to .env
-└── package.json
+- Full CRUD for patient records
+- Layered layout: routes, controllers, SQL queries, and response objects
+- Connection pooling with `mysql2` (compatible with MySQL 8 authentication)
+- Structured JSON responses with HTTP status codes and timestamps
+- Request logging with Pino
+- Docker image and Compose stack for the API and database
+- Environment-based configuration via `.env`
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Client["Client / Postman"] --> API["Express API :3000"]
+  API --> Routes["Routes"]
+  Routes --> Controller["Controller"]
+  Controller --> SQL["Query layer"]
+  SQL --> DB[("MySQL patientsdb")]
 ```
 
-How a request flows:
-
-```text
-Client  →  route  →  controller  →  MySQL  →  JSON response
-```
-
----
-
-## Requirements
-
-- [Node.js](https://nodejs.org/) 18 or newer (22 recommended)
-- [MySQL](https://dev.mysql.com/) 8+ **or** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- npm (comes with Node.js)
+| Path                 | Role                              |
+| -------------------- | --------------------------------- |
+| `src/index.js`       | Application entry point           |
+| `src/route/`         | HTTP route definitions            |
+| `src/controller/`    | Request handling and status codes |
+| `src/query/`         | Parameterized SQL                 |
+| `src/config/`        | MySQL pool                        |
+| `src/domain/`        | Response envelope                 |
+| `dbinit/init.sql`    | Schema bootstrap                  |
+| `Dockerfile`         | API image                         |
+| `docker-compose.yml` | API + MySQL services              |
 
 ---
 
-## 1. Run locally (Node + your own MySQL)
+## Prerequisites
 
-### Create the database
+- Node.js 18 or later (22 recommended)
+- npm
+- MySQL 8, **or** Docker Desktop / Docker Engine with Compose
 
-```bash
-mysql -u root < dbinit/init.sql
-```
+---
 
-### Configure environment
+## Getting started
+
+### Environment
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` if your MySQL user or password is different:
+| Variable              | Description       | Default      |
+| --------------------- | ----------------- | ------------ |
+| `SERVER_PORT`         | HTTP port         | `3000`       |
+| `DB_HOST`             | MySQL host        | `localhost`  |
+| `DB_PORT`             | MySQL port        | `3306`       |
+| `DB_USER`             | Database user     | `root`       |
+| `DB_PASSWORD`         | Database password | empty        |
+| `DB_NAME`             | Database name     | `patientsdb` |
+| `DB_CONNECTION_LIMIT` | Pool size         | `10`         |
 
-```env
-SERVER_PORT=3000
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=patientsdb
-DB_CONNECTION_LIMIT=10
-```
+Do not commit `.env`. Use `.env.example` as the template.
 
-### Install and start
+### Option A — Local Node.js and MySQL
 
 ```bash
+mysql -u root < dbinit/init.sql
 npm install
 npm run start:dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). You should see:
+Verify:
+
+```bash
+curl http://localhost:3000/
+```
 
 ```json
 {
+  "timeStamp": "10/11/2026, 9:00:00 PM",
   "statusCode": 200,
   "httpStatus": "OK",
   "message": "Patient API, v1.0.0 - All Systems Go"
 }
 ```
 
----
-
-## 2. Run with Docker (easiest)
-
-Docker starts **MySQL** and the **API** for you.
+### Option B — Docker Compose
 
 ```bash
-cd /path/to/this/project
 docker compose up -d --build
 ```
 
-If your CLI is older, use:
+Older CLIs:
 
 ```bash
 docker-compose up -d --build
 ```
 
-Check that both containers are up:
+| Service           | Host port | Container port |
+| ----------------- | --------- | -------------- |
+| API (`nodeapp`)   | `3000`    | `3000`         |
+| MySQL (`mysqldb`) | `3360`    | `3306`         |
 
 ```bash
 docker compose ps
-curl http://127.0.0.1:3000/
+docker compose logs -f
+docker compose down
 ```
-
-Useful commands:
-
-```bash
-docker compose logs -f          # follow logs
-docker compose down             # stop containers
-```
-
-The API is on port **3000**. MySQL is published on host port **3360** (container still uses 3306).
 
 ---
 
-## Example requests
+## API reference
 
-Create a patient:
+Base URL: `http://localhost:3000`
+
+| Method   | Endpoint        | Status        | Description                           |
+| -------- | --------------- | ------------- | ------------------------------------- |
+| `GET`    | `/`             | `200`         | Service health                        |
+| `GET`    | `/patients`     | `200`         | List patients (max 100, newest first) |
+| `GET`    | `/patients/:id` | `200` / `404` | Fetch one patient                     |
+| `POST`   | `/patients`     | `201` / `500` | Create a patient                      |
+| `PUT`    | `/patients/:id` | `200` / `404` | Update a patient                      |
+| `DELETE` | `/patients/:id` | `200` / `404` | Delete a patient                      |
+
+Unknown routes return `404`.
+
+### Patient payload
+
+```json
+{
+  "first_name": "Jane",
+  "last_name": "Doe",
+  "email": "jane@example.com",
+  "address": "123 Main St",
+  "diagnosis": "Flu",
+  "phone": "555-0100",
+  "image_url": "https://example.com/jane.jpg"
+}
+```
+
+`email` must be unique.
+
+### Examples
 
 ```bash
+# Create
 curl -X POST http://localhost:3000/patients \
   -H "Content-Type: application/json" \
   -d '{
@@ -148,19 +170,14 @@ curl -X POST http://localhost:3000/patients \
     "phone": "555-0100",
     "image_url": "https://example.com/jane.jpg"
   }'
-```
 
-List patients:
-
-```bash
+# List
 curl http://localhost:3000/patients
-```
 
-Get / update / delete one patient (`1` is the id):
-
-```bash
+# Read
 curl http://localhost:3000/patients/1
 
+# Update
 curl -X PUT http://localhost:3000/patients/1 \
   -H "Content-Type: application/json" \
   -d '{
@@ -173,59 +190,44 @@ curl -X PUT http://localhost:3000/patients/1 \
     "image_url": "https://example.com/jane.jpg"
   }'
 
+# Delete
 curl -X DELETE http://localhost:3000/patients/1
 ```
 
-You can also use [Postman](https://www.postman.com/) with the same URLs.
-
 ---
 
-## Deploy on a cloud VM (AWS EC2)
+## Deployment
 
-On the server:
+The Compose stack is suitable for a Linux VM (for example Amazon Linux on EC2).
 
 ```bash
-cd ~/nodejsapi
+git clone https://github.com/phuchuydoan/ApiNodejsGenerating.git
+cd ApiNodejsGenerating
 docker compose up -d --build
 ```
 
-The app listens on port **3000**. For Postman or a browser on your laptop to reach it:
+Before exposing the API:
 
-1. Use the instance **Elastic IP** (not an old public IP that changed).
-2. Open **inbound TCP 3000** on the EC2 security group.
-3. Call `http://YOUR_ELASTIC_IP:3000/`.
-
-SSH example:
+1. Bind a static public address (Elastic IP on AWS).
+2. Allow inbound **TCP 3000** on the instance security group or firewall.
+3. Confirm locally on the host: `curl http://127.0.0.1:3000/`
+4. Call `http://<77.113.147.226>:3000/` from a client.
 
 ```bash
-ssh -i your-key.pem ec2-user@YOUR_ELASTIC_IP
+ssh -i <key.pem> ec2-user@<public-ip>
 ```
 
 ---
 
-## Push this project to GitHub
+## Scripts
 
-The GitHub repo is currently empty. From your project folder:
-
-```bash
-cd /path/to/nodejsapi
-git init
-git add .
-git commit -m "Initial commit: Patient REST API with Express, MySQL, and Docker"
-git branch -M main
-git remote add origin https://github.com/phuchuydoan/ApiNodejsGenerating.git
-git push -u origin main
-```
-
-`.gitignore` already excludes `node_modules` and `.env` so secrets and installed packages are not uploaded.
+| Command              | Description                             |
+| -------------------- | --------------------------------------- |
+| `npm run start:dev`  | Development server with Nodemon         |
+| `npm run start:prod` | Production start command used in Docker |
 
 ---
 
-## Tech stack
+## License
 
-- Node.js + Express 5
-- MySQL 8 (`mysql2` driver)
-- Docker + Docker Compose
-- Pino for logs
-
-Built as a learning project: routes, controllers, SQL, environment variables, and containers.
+ISC
